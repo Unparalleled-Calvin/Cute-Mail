@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>CuteMail</title>
+
+    <!-- Bootstrap CSS CDN -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css"
+        integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous">
+    <!-- Our Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Scrollbar Custom CSS -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.min.css">
+    <!-- MDB CSS -->
+    <link rel="stylesheet" href="./mdb.min.css" />
+
+
+    <!-- Font Awesome JS -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.15.3/css/all.css" rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="wrapper">
+        <!-- Sidebar  -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <h3>CuteMail</h3>
+            </div>
+
+            <ul class="list-unstyled components">
+                <li class="active sideLi" style="cursor: pointer;" id="writeLi">
+                    <a class="far fa-envelope">&ensp;写&emsp;信</a>
+                </li>
+                <li class="sideLi" style="cursor: pointer;" id="draftLi">
+                    <a class="far fa-edit">&ensp;草稿箱</a>
+                </li>
+                <li class="sideLi" style="cursor: pointer;" id="outLi">
+                    <a class="far fa-paper-plane">&ensp;已发送</a>
+                </li>
+                <li class="sideLi" style="cursor: pointer;" id="friendLi">
+                    <a class="far fa-user">&ensp;好&emsp;友</a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Page Content  -->
+        <div id="content" style="overflow-y:hidden;">
+
+            <nav class="navbar navbar-light bg-light" style="margin-top: -15px;">
+                <button type="button" id="sidebarCollapse" class="btn btn-info">
+                    <i class="fas fa-align-left fa-lg"></i>
+                    <span id="sidebarCollapseText">收起</span>
+                </button>
+                <div style="margin-left: 0px;" class="writeButton">
+                    <button type="button" id="sendButton" class="btn btn-info d-inline-block">
+                        <i class="fas fa-shipping-fast fa-lg"></i>
+                        <span id="sendButtonText">发送</span>
+                    </button>
+                    <button type="button" id="clearButton" class="btn btn-info d-inline-block">
+                        <i class="far fa-trash-alt fa-lg"></i>
+                        <span id="clearButtonText">清除</span>
+                    </button>
+                    <button type="button" id="saveButton" class="btn btn-info d-inline-block">
+                        <i class="far fa-save fa-lg"></i>
+                        <span id="saveButtonText">保存</span>
+                    </button>
+                </div>
+                <div style="margin-left: 0px; display: none;" class="draftButton">
+                    <button type="button" id="chooseButton" class="btn btn-info d-inline-block">
+                        <i class="fas fa-shipping-fast fa-lg"></i>
+                        <span id="chooseButtonText">全选</span>
+                    </button>
+                    <button type="button" id="unchooseButton" class="btn btn-info d-inline-block">
+                        <i class="far fa-trash-alt fa-lg"></i>
+                        <span id="unchooseButtonText">取消</span>
+                    </button>
+                    <button type="button" id="deleteButton" class="btn btn-info d-inline-block">
+                        <i class="far fa-save fa-lg"></i>
+                        <span id="deleteButtonText">删除</span>
+                    </button>
+                </div>
+            </nav>
+            <div id="writePage">
+                <div style="margin-top: -10px;">
+                    <div class="form-outline" style="box-shadow: 5px 5px 3px #888888;">
+                        <textarea class="form-control" id="receiver" rows="1"></textarea>
+                        <label class="form-label" for="receiver">收信人</label>
+                    </div>
+                    <div class="form-outline" style="margin-top: 15px;box-shadow: 5px 5px 3px #888888;">
+                        <textarea class="form-control" id="subject" rows="1"></textarea>
+                        <label class="form-label" for="subject">主题</label>
+                    </div>
+                    <div class="form-outline" style="margin-top: 15px;box-shadow: 5px 5px 3px #888888;">
+                        <textarea class="form-control" id="maintext" rows="1"></textarea>
+                        <label class="form-label" for="maintext">正文</label>
+                    </div>
+                </div>
+            </div>
+            <div id="draftPage" style="display: none;">
+                <div id="emptyTip"
+                    style="font-size: 40px; color: #888888; position: absolute; left:50%; top:50%; transform: translate(-50%, -50%);">
+                    <div style="display:inline">Oops!</div><a class="fas fa-paw" style="margin-left: 10px;"></a>
+                    <div>好像草稿箱是空的耶~</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Insert this line above script imports  -->
+        <script>
+            if (typeof module === 'object') { window.module = module; module = undefined; }
+        </script>
+
+        <!-- jQuery CDN - Slim version (=without AJAX) -->
+        <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+        <script>if (typeof module === 'object') { window.jQuery = window.$ = module.exports; };</script>
+        <!-- Popper.JS -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
+        <!-- Bootstrap JS -->
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
+        <!-- jQuery Custom Scroller CDN -->
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.concat.min.js"></script>
+        <!-- MDB -->
+        <script type="text/javascript" src="./mdb.min.js"></script>
+        <!-- Sweet Alert -->
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@7.25.6/dist/sweetalert2.all.min.js"></script>
+
+
+        <!-- Insert this line after script imports -->
+        <script>if (window.module) module = window.module;</script>
+
+        <script src=./cute.js></script>
+        <script>
+            init();
+        </script>
+</body>
+
+</html>
