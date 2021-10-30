@@ -15,6 +15,8 @@ const pathName = document.location.pathname;
 const rootPath = pathName.substr(1, pathName.search(/index.html/g) - 1);
 const draftPath = rootPath + 'drafts/';
 const outPath = rootPath + 'out/';
+const smtpPort = 25;
+const pop3Port = 110;
 
 var fs = require('fs')
 var net = require('net');
@@ -23,11 +25,12 @@ const { userInfo } = require('os');
 let edit_state = "new";
 let edit_from = "";
 
+
 var info = {
-    host: '',
+    stmpHost: '',
+    pop3Host: '',
     username: '',
-    password: '',
-    port: 25
+    password: ''
 };
 
 function fit() {
@@ -49,7 +52,7 @@ function clear() {
 }
 
 function saveDraft() {
-    date = new Date()
+    date = new Date();
     date = date.toLocaleDateString().replaceAll('/', '-') + '+' + date.toLocaleTimeString('chinese', { hour12: false }).replaceAll(':', '-');
     let content = {
         'receiver': $('#receiver')[0].value,
@@ -70,7 +73,10 @@ function saveDraft() {
         else {
             if(edit_state == "draft"){
                 fs.unlinkSync(draftPath + edit_from);
-                edit_from = filename;
+                edit_from = filename.replace(draftPath, "");
+            }
+            else{
+                updateNumberText("draft", 1);
             }
             Swal.fire({
                 title: '保存成功',
@@ -133,14 +139,14 @@ $('#saveButton').on('click', function () {
 $('#chooseButton').on('click', function() {
     $('.draftTable').each(function(){
         $(this)[0].classList.add("chosen");
-        $(this)[0].firstChild.firstChild.firstChild.bgColor = "#dde8fd";
+        $(this)[0].bgColor = "#dde8fd";
     })
 })
 
 $('#unchooseButton').on('click', function() {
     $('.draftTable').each(function(){
         $(this)[0].classList.remove("chosen");
-        $(this)[0].firstChild.firstChild.firstChild.bgColor = "#eaf1ff";
+        $(this)[0].bgColor = "#eaf1ff";
     })
 })
 
@@ -153,6 +159,7 @@ $('#deleteButton').on('click', function() {
         flag = 1
     })
     if(flag) {
+        updateNumber("draft", $(".draftTable").length);
         Swal.fire({
             title: '成功',
             type: 'success',
@@ -172,15 +179,17 @@ function typeSwitch(type, lastType){
     $("#" + type + "Page")[0].style.display = "block";
     if(type == "write")
         fit();
-    else if(type=="draft")
-        loadDrafts();
+    else if(type=="draft") {
+        loadDrafts(false);
+    };
+
 }
 
 $('.sideLi').on('click', function(e){
     let lastLi = $('li.active.sideLi')[0];
-    let li = e.target.parentNode;
-    type = li.id.substr(0, li.id.length - 2)
-    lastType = lastLi.id.substr(0, lastLi.id.length - 2)
+    let li = $(this)[0];
+    type = li.id.substr(0, li.id.length - 2);
+    lastType = lastLi.id.substr(0, lastLi.id.length - 2);
     if(type != lastType){
         typeSwitch(type, lastType);
     }
@@ -188,19 +197,19 @@ $('.sideLi').on('click', function(e){
 
 function send() {
     let i = 0;
-    var socket = net.connect(info.port, info.host, function () {
-        console.log('CONNECTED TO: ' + info.host + ':' + info.port);
+    var socket = net.connect(smtpPort, info.stmpHost, function () {
+        console.log('CONNECTED TO: ' + info.stmpHost + ':' + smtpPort);
     });
 
     var commands = [
-        'HELO ' + info.host + '\r\n',
+        'HELO ' + info.stmpHost + '\r\n',
         'AUTH LOGIN\r\n',
         window.btoa(info.username) + '\r\n',
         window.btoa(info.password) + '\r\n',
         'MAIL FROM: <' + info.username + '>\r\n'
     ]
     cnt = 0;
-    DATA = "FROM: <" + userInfo.username + '>\r\n';
+    DATA = "FROM: <" + info.username + '>\r\n';
     DATA += "TO: ";
     $("#receiver")[0].value.split(';').forEach(function(receiver){
         if(receiver){
@@ -218,7 +227,7 @@ function send() {
     commands.push('QUIT\r\n');
 
     socket.on('error', buff => {
-        errorPannel();
+        errorPannel("发送");
     })
 
     socket.on('data', buff => {
@@ -226,13 +235,13 @@ function send() {
         if (i >= 6 && i <= 5 + cnt) {
             if (res.substr(0, 3) != '250'){
                 i = commands.length;
-                errorPannel();
+                errorPannel("发送");
             }
         }
         if (i == 7 + cnt) {
             if (res.substr(0, 3) != '250'){
                 i = commands.length;
-                errorPannel();
+                errorPannel("发送");
             }
             else {
                 Swal.fire({
@@ -255,9 +264,10 @@ function send() {
 }
 
 function infoPannel() {
-    var html = "<div style='height:60px'><p style='display:inline-block;width:100px;text-align:justify;'>服务器：</p><input placeholder='服务器' id='host_input' value=" + info.host + "></input></div>\
-    <div style='height:60px'><p style='display:inline-block;width:100px;text-align:justify;'>用户名：</p><input placeholder='用户名' id='username_input' value=" + info.username + "></input></div>\
-    <div style='height:60px'><p style='display:inline-block;width:100px;text-align:justify;'>授权码：</p><input placeholder='授权码' id='password_input'value=" + info.password + "></input></div>";
+    var html = "<div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>SMTP服务器：</p><input placeholder='SMTP' id='stmpHost_input' value=" + info.stmpHost + "></input></div>\
+    <div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>POP3服务器：</p><input placeholder='SMTP' id='pop3Host_input' value=" + info.pop3Host + "></input></div>\
+    <div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>&nbsp;&nbsp;&nbsp;&nbsp;用户名：</p><input placeholder='用户名' id='username_input' value=" + info.username + "></input></div>\
+    <div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>&nbsp;&nbsp;&nbsp;&nbsp;授权码：</p><input placeholder='授权码' id='password_input'value=" + info.password + "></input></div>";
     Swal.fire({
         title: '登录信息',
         type: 'info',
@@ -266,14 +276,16 @@ function infoPannel() {
         confirmButtonText: "确定",
     }).then(function (result) {
         if (result['value']) {
-            info.host = $("#host_input")[0].value;
+            info.stmpHost = $("#stmpHost_input")[0].value;
+            info.pop3Host = $("#pop3Host_input")[0].value;
             info.username = $("#username_input")[0].value;
             info.password = $("#password_input")[0].value;
-            if (info.host && info.username && info.password) {
-                loginTest();
+            if (info.stmpHost && info.pop3Host && info.username && info.password) {
+                loginSmtpTest();
+                loginPop3Test();
             }
             else
-                errorPannel();
+                errorPannel("登录");
         }
     });
 }
@@ -290,33 +302,34 @@ function successPannel() {
     });
 }
 
-function errorPannel() {
+function errorPannel(type) {
     Swal.fire({
-        title: '登陆失败',
+        title: type + '失败',
         type: 'error',
         text: '请检查信息是否完整且正确',
         focusConfirm: true, //聚焦到确定按钮
         confirmButtonText: "确定"
     }).then(function (result) {
-        infoPannel();
+        if(type.includes("登录"))
+            infoPannel();
     });
 }
 
-function loginTest() {
+function loginSmtpTest() {
     let i = 0;
-    var socket = net.connect(info.port, info.host, function () {
-        console.log('CONNECTED TO: ' + info.host + ':' + info.port);
+    var socket = net.connect(smtpPort, info.stmpHost, function () {
+        console.log('CONNECTED TO: ' + info.stmpHost + ':' + smtpPort);
     });
 
     var commands = [
-        'HELO ' + info.host + '\r\n',
+        'HELO ' + info.stmpHost + '\r\n',
         'AUTH LOGIN\r\n',
         window.btoa(info.username) + '\r\n',
         window.btoa(info.password) + '\r\n'
     ]
 
     socket.on('error', buff => {
-        errorPannel();
+        errorPannel("登录SMTP服务器");
     })
 
     socket.on('data', buff => {
@@ -325,7 +338,43 @@ function loginTest() {
             if (res.substr(0, 3) == '235')
                 successPannel();
             else
-                errorPannel();
+                errorPannel("登录SMTP服务器");
+        }
+        if (i < commands.length) {
+            socket.write(String(commands[i++]));
+        } else {
+            socket.destroy();
+        }
+    });
+}
+
+function loginPop3Test() {
+    let i = 0;
+    var socket = net.connect(pop3Port, info.pop3Host, function () {
+        console.log('CONNECTED TO: ' + info.pop3Host + ':' + pop3Port);
+    });
+
+    var commands = [
+        'USER ' + info.username + '\r\n',
+        'PASS ' + info.password + '\r\n',
+        'STAT\r\n'
+    ]
+
+    socket.on('error', buff => {
+        errorPannel("登录POP3服务器");
+    })
+
+    socket.on('data', buff => {
+        const res = buff.toString();
+        if (i == 2) {
+            if (res.substr(1, 3) == 'OK')
+                successPannel();
+            else
+                errorPannel("登录POP3服务器");
+        }
+        if (i == 3) {
+            numberStr = res.split(' ')[1];
+            updateNumber("receive", numberStr);
         }
         if (i < commands.length) {
             socket.write(String(commands[i++]));
@@ -346,6 +395,7 @@ function saveInfo() {
 function init() {
     fit();
     readInfo();
+    loadDrafts(true);
     infoPannel();
 }
 
@@ -355,9 +405,10 @@ function insertTable(filename, subject, receiver, maintext) {
     var table = document.createElement('table');
     table.width = '100%';
     table.filename = filename;
-    table.className = "draftTable";
+    table.className = "draftTable ripple";
     table.style.cursor = "pointer";
-    table.innerHTML = "<td bgcolor='#eaf1ff' style='padding-left:30px; padding-bottom:10px;'>\
+    table.bgColor='#eaf1ff'
+    table.innerHTML = "<td style='padding-left:30px; padding-bottom:10px;'>\
         <table>\
             <th width='60' style='font-weight:normal; vertical-align:top;'>\
                 <table>\
@@ -400,11 +451,11 @@ function bindClickForTables() {
     $('.draftTable').on('click', function(e){
         if($(this)[0].classList.contains("chosen")){
             $(this)[0].classList.remove("chosen");
-            $(this)[0].firstChild.firstChild.firstChild.bgColor = "#eaf1ff";
+            $(this)[0].bgColor = "#eaf1ff";
         }
         else{
             $(this)[0].classList.add("chosen");
-            $(this)[0].firstChild.firstChild.firstChild.bgColor = "#dde8fd";
+            $(this)[0].bgColor = "#dde8fd";
         }
     });
 }
@@ -431,29 +482,44 @@ function bindDblClikForTables(){
     })
 }
 
-function loadDrafts() {
+function updateNumber(type, number) {
+    numberStr = String(number);
+    numberStr = "&ensp;".repeat(15 - numberStr.length) + "(" + numberStr + ")";
+    $("#" + type + "LiText")[0].innerHTML = $("#" + type + "LiText")[0].innerHTML.replace(/(\u2002)*?\([0-9]+?\)/g, numberStr);
+};
+
+function updateNumberText(type, off) {
+    numberStr = $("#" + type + "LiText")[0].innerHTML.match(/\([0-9]+?\)/g)[0];
+    numberStr = numberStr.substr(1, numberStr.length - 2);
+    numberStr = String(Number(numberStr) + off);
+    numberStr = "&ensp;".repeat(15 - numberStr.length) + "(" + numberStr + ")";
+    $("#" + type + "LiText")[0].innerHTML = $("#" + type + "LiText")[0].innerHTML.replace(/(\u2002)*?\([0-9]+?\)/g, numberStr);
+};
+
+function loadDrafts(update) {
     $(".draftTable").each(function() {
         $(this).remove();
     })
-    fs.readdir(draftPath, function(err, files) {
-        files.reverse();
-        if(files.length)
-            $("#emptyTip")[0].style.display = "none";
-        else
-            $("#emptyTip")[0].style.display = "block";
-        files.forEach(function(filename) {
-            content = JSON.parse(fs.readFileSync(draftPath + filename));
-            receiver = content.receiver.split(';')[0]
-            receiver = receiver.length > 2 ? receiver[0] + ";..." : receiver;
-            subject = content.subject
-            subject = subject.length > 30 ? subject.substr(0, 30) + "..." : subject;
-            maintext = content.maintext;
-            line1 = maintext.indexOf('\n') >= 0 ? maintext.substr(0, maintext.indexOf('\n')) : maintext;
-            maintext = line1.substr(0, 30) + "..."
-            insertTable(filename, subject, receiver, maintext);
-        });
-        bindClickForTables();
-        bindDblClikForTables();
+    files = fs.readdirSync(draftPath);
+    files.reverse();
+    if(files.length)
+        $("#emptyTip")[0].style.display = "none";
+    else
+        $("#emptyTip")[0].style.display = "block";
+    files.forEach(function(filename) {
+        content = JSON.parse(fs.readFileSync(draftPath + filename));
+        receiver = content.receiver.split(';')[0]
+        receiver = receiver.length > 2 ? receiver[0] + ";..." : receiver;
+        subject = content.subject
+        subject = subject.length > 30 ? subject.substr(0, 30) + "..." : subject;
+        maintext = content.maintext;
+        line1 = maintext.indexOf('\n') >= 0 ? maintext.substr(0, maintext.indexOf('\n')) : maintext;
+        maintext = line1.substr(0, 30) + "..."
+        insertTable(filename, subject, receiver, maintext);
     });
+    bindClickForTables();
+    bindDblClikForTables();
+    if(update)
+        updateNumber("draft", $(".draftTable").length);
 }
 

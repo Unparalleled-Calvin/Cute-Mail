@@ -18,8 +18,7 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.min.css">
     <!-- MDB CSS -->
     <link rel="stylesheet" href="./mdb.min.css" />
-
-
+    
     <!-- Font Awesome JS -->
     <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.15.3/css/all.css" rel="stylesheet">
 </head>
@@ -35,23 +34,26 @@
 
             <ul class="list-unstyled components">
                 <li class="active sideLi" style="cursor: pointer;" id="writeLi">
-                    <a class="far fa-envelope">&ensp;写&emsp;信</a>
+                    <a class="ripple"><i class="far fa-envelope"></i><div id="writeLiText" style="display: inline; position: absolute; left: 40px;">写&emsp;信</div></a>
+                
+                </li>
+                <li class="sideLi" style="cursor: pointer;" id="receiveLi">
+                    <a class="ripple"><i class="far fa-folder"></i><div id="receiveLiText" style="display: inline; position: absolute; left: 40px;">收件箱(0)</div></a>
                 </li>
                 <li class="sideLi" style="cursor: pointer;" id="draftLi">
-                    <a class="far fa-edit">&ensp;草稿箱</a>
+                    <a class="ripple"><i class="far fa-edit"></i><div id="draftLiText" style="display: inline; position: absolute; left: 40px;">草稿箱(0)</div></a>
                 </li>
                 <li class="sideLi" style="cursor: pointer;" id="outLi">
-                    <a class="far fa-paper-plane">&ensp;已发送</a>
+                    <a class="ripple"><i class="far fa-paper-plane"></i><div id="outLiText" style="display: inline; position: absolute; left: 40px;">已发送(0)</div></a>
                 </li>
                 <li class="sideLi" style="cursor: pointer;" id="friendLi">
-                    <a class="far fa-user">&ensp;好&emsp;友</a>
+                    <a class="ripple"><i class="far fa-user ripple"></i><div id="friendLiText" style="display: inline; position: absolute; left: 40px;">好&emsp;友(0)</div></a>
                 </li>
             </ul>
         </nav>
 
         <!-- Page Content  -->
         <div id="content" style="overflow-y:hidden;">
-
             <nav class="navbar navbar-light bg-light" style="margin-top: -15px;">
                 <button type="button" id="sidebarCollapse" class="btn btn-info">
                     <i class="fas fa-align-left fa-lg"></i>
@@ -73,15 +75,15 @@
                 </div>
                 <div style="margin-left: 0px; display: none;" class="draftButton">
                     <button type="button" id="chooseButton" class="btn btn-info d-inline-block">
-                        <i class="fas fa-shipping-fast fa-lg"></i>
+                        <i class="far fa-check-square fa-lg"></i>
                         <span id="chooseButtonText">全选</span>
                     </button>
                     <button type="button" id="unchooseButton" class="btn btn-info d-inline-block">
-                        <i class="far fa-trash-alt fa-lg"></i>
+                        <i class="far fa-times-circle fa-lg"></i>
                         <span id="unchooseButtonText">取消</span>
                     </button>
                     <button type="button" id="deleteButton" class="btn btn-info d-inline-block">
-                        <i class="far fa-save fa-lg"></i>
+                        <i class="far fa-trash-alt fa-lg"></i>
                         <span id="deleteButtonText">删除</span>
                     </button>
                 </div>
@@ -109,7 +111,6 @@
                     <div>好像草稿箱是空的耶~</div>
                 </div>
             </div>
-
         </div>
 
         <!-- Insert this line above script imports  -->
