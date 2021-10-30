@@ -20,11 +20,11 @@ const pop3Port = 110;
 
 var fs = require('fs')
 var net = require('net');
-const { userInfo } = require('os');
 
 let edit_state = "new";
 let edit_from = "";
 
+var pageType = "write";
 
 var info = {
     stmpHost: '',
@@ -33,11 +33,20 @@ var info = {
     password: ''
 };
 
-function fit() {
-    $('#maintext')[0].rows = Math.round((window.innerHeight - $('#maintext')[0].getBoundingClientRect().top) / 25) - 3
-}
 window.onresize = function () {
     fit();
+}
+
+function choosePath(type){
+    if(type == "draft")
+        path = draftPath;
+    else if(type == "out")
+        path = outPath;
+    return path
+}
+
+function fit() {
+    $('#maintext')[0].rows = Math.round((window.innerHeight - $('#maintext')[0].getBoundingClientRect().top) / 25) - 3
 }
 
 function checkEmpty() {
@@ -89,6 +98,18 @@ function saveDraft() {
     });
 }
 
+function saveOut() {
+    date = new Date();
+    date = date.toLocaleDateString().replaceAll('/', '-') + '+' + date.toLocaleTimeString('chinese', { hour12: false }).replaceAll(':', '-');
+    let content = {
+        'receiver': $('#receiver')[0].value,
+        'subject': $('#subject')[0].value,
+        'maintext': $('#maintext')[0].value
+    };
+    filename = outPath + date + '.json';
+    fs.writeFileSync(filename, JSON.stringify(content));
+}
+
 $("#sendButton").on('click', function () {
     if (checkEmpty()) {
         Swal.fire({
@@ -137,14 +158,14 @@ $('#saveButton').on('click', function () {
 })
 
 $('#chooseButton').on('click', function() {
-    $('.draftTable').each(function(){
+    $('.' + pageType + 'Table').each(function(){
         $(this)[0].classList.add("chosen");
         $(this)[0].bgColor = "#dde8fd";
     })
 })
 
 $('#unchooseButton').on('click', function() {
-    $('.draftTable').each(function(){
+    $('.' + pageType + 'Table').each(function(){
         $(this)[0].classList.remove("chosen");
         $(this)[0].bgColor = "#eaf1ff";
     })
@@ -152,18 +173,23 @@ $('#unchooseButton').on('click', function() {
 
 $('#deleteButton').on('click', function() {
     let flag = 0;
-    $(".draftTable.chosen").each(function(){
-        filename = draftPath + $(this)[0].filename;
+    path = choosePath(pageType);
+    $("." + pageType + "Table.chosen").each(function(){
+        filename = path + $(this)[0].filename;
         fs.unlinkSync(filename);
         $(this).remove();
-        flag = 1
+        flag = 1;
     })
     if(flag) {
-        updateNumber("draft", $(".draftTable").length);
+        updateNumber(pageType, $("." + pageType + "Table").length);
+        if(pageType == "draft")
+            text = '选中草稿已删除';
+        else if(pageType == "out")
+            text = '选中邮件已删除';
         Swal.fire({
             title: '成功',
             type: 'success',
-            text: '选中草稿已删除',
+            text: text,
             focusConfirm: true, //聚焦到确定按钮
             confirmButtonText: "确定"
         });
@@ -179,10 +205,13 @@ function typeSwitch(type, lastType){
     $("#" + type + "Page")[0].style.display = "block";
     if(type == "write")
         fit();
-    else if(type=="draft") {
-        loadDrafts(false);
+    else if(type =="draft") {
+        load("draft", false);
+    }
+    else if(type =="out") {
+        load("out", false);
     };
-
+    pageType = type;
 }
 
 $('.sideLi').on('click', function(e){
@@ -251,6 +280,8 @@ function send() {
                     confirmButtonText: "确定",
                     showCancelButton: false,
                 }).then(function (result) {
+                    saveOut();
+                    updateNumberText("out", 1);
                     clear();
                 });
             }
@@ -395,17 +426,18 @@ function saveInfo() {
 function init() {
     fit();
     readInfo();
-    loadDrafts(true);
+    load("draft", true);
+    load("out", true);
     infoPannel();
 }
 
-function insertTable(filename, subject, receiver, maintext) {
+function insertTable(type, filename, subject, receiver, maintext) {
     let date = filename.split('.json')[0].split('+')[0];
     let parts = date.split('-');
     var table = document.createElement('table');
     table.width = '100%';
     table.filename = filename;
-    table.className = "draftTable ripple";
+    table.className = type + "Table ripple";
     table.style.cursor = "pointer";
     table.bgColor='#eaf1ff'
     table.innerHTML = "<td style='padding-left:30px; padding-bottom:10px;'>\
@@ -444,11 +476,11 @@ function insertTable(filename, subject, receiver, maintext) {
             </th>\
         </table>\
     </td>"
-    $("#draftPage")[0].appendChild(table);
+    $("#" + type + "Page")[0].appendChild(table);
 }
 
-function bindClickForTables() {
-    $('.draftTable').on('click', function(e){
+function bindClickForTables(type) {
+    $('.' + type + 'Table').on('click', function(e){
         if($(this)[0].classList.contains("chosen")){
             $(this)[0].classList.remove("chosen");
             $(this)[0].bgColor = "#eaf1ff";
@@ -460,12 +492,13 @@ function bindClickForTables() {
     });
 }
 
-function bindDblClikForTables(){
-    $('.draftTable').on('dblclick', function(e){
+function bindDblClikForTables(type){
+    $('.' + type + 'Table').on('dblclick', function(e){
         filename = $(this)[0].filename;
-        edit_state = "draft";
+        edit_state = type;
         edit_from = filename;
-        content = JSON.parse(fs.readFileSync(draftPath + filename));
+        path = choosePath(type);
+        content = JSON.parse(fs.readFileSync(path + filename));
         if(content.receiver){
             $('#receiver')[0].value = content.receiver;
             $('#receiver')[0].classList.add("active");
@@ -478,7 +511,7 @@ function bindDblClikForTables(){
             $('#maintext')[0].value = content.maintext;
             $('#maintext')[0].classList.add("active");
         }
-        typeSwitch("write", "draft");
+        typeSwitch("write", type);
     })
 }
 
@@ -496,18 +529,19 @@ function updateNumberText(type, off) {
     $("#" + type + "LiText")[0].innerHTML = $("#" + type + "LiText")[0].innerHTML.replace(/(\u2002)*?\([0-9]+?\)/g, numberStr);
 };
 
-function loadDrafts(update) {
-    $(".draftTable").each(function() {
+function load(type, update) {
+    $("." + type + "Table").each(function() {
         $(this).remove();
     })
-    files = fs.readdirSync(draftPath);
+    path = choosePath(type);
+    files = fs.readdirSync(path);
     files.reverse();
     if(files.length)
-        $("#emptyTip")[0].style.display = "none";
+        $("#" + type + "EmptyTip")[0].style.display = "none";
     else
-        $("#emptyTip")[0].style.display = "block";
+        $("#" + type + "EmptyTip")[0].style.display = "block";
     files.forEach(function(filename) {
-        content = JSON.parse(fs.readFileSync(draftPath + filename));
+        content = JSON.parse(fs.readFileSync(path + filename));
         receiver = content.receiver.split(';')[0]
         receiver = receiver.length > 2 ? receiver[0] + ";..." : receiver;
         subject = content.subject
@@ -515,11 +549,11 @@ function loadDrafts(update) {
         maintext = content.maintext;
         line1 = maintext.indexOf('\n') >= 0 ? maintext.substr(0, maintext.indexOf('\n')) : maintext;
         maintext = line1.substr(0, 30) + "..."
-        insertTable(filename, subject, receiver, maintext);
+        insertTable(type, filename, subject, receiver, maintext);
     });
-    bindClickForTables();
-    bindDblClikForTables();
+    bindClickForTables(type);
+    if(type == "draft")
+        bindDblClikForTables(type);
     if(update)
-        updateNumber("draft", $(".draftTable").length);
+        updateNumber(type, $("." + type + "Table").length);
 }
-
