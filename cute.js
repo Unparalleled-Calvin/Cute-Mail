@@ -23,6 +23,7 @@ var net = require('net');
 
 let edit_state = "new";
 let edit_from = "";
+let receiveNum = 0;
 
 var pageType = "write";
 
@@ -173,19 +174,48 @@ $('#unchooseButton').on('click', function() {
 
 $('#deleteButton').on('click', function() {
     let flag = 0;
-    path = choosePath(pageType);
-    $("." + pageType + "Table.chosen").each(function(){
-        filename = path + $(this)[0].filename;
-        fs.unlinkSync(filename);
-        $(this).remove();
+    if(pageType == "draft" || pageType == "out") {
+        path = choosePath(pageType);
+        $("." + pageType + "Table.chosen").each(function(){
+            filename = path + $(this)[0].filename;
+            fs.unlinkSync(filename);
+            $(this).remove();
+            flag = 1;
+        });
+    }
+    else if(type == "receive"){
+        let i = 0;
+        var socket = net.connect(pop3Port, info.pop3Host, function () {
+            console.log('CONNECTED TO: ' + info.pop3Host + ':' + pop3Port);
+        });
+        var commands = [
+            'USER ' + info.username + '\r\n',
+            'PASS ' + info.password + '\r\n',
+        ];
+        $("." + pageType + "Table.chosen").each(function(){
+            commands.push("DELE " + $(this)[0].filename + '\r\n');
+            $(this).remove();
+        });
+        commands.push('QUIT\r\n');
+        socket.on('data', buff => {
+            if (i < commands.length) {
+                socket.write(String(commands[i++]));
+            } else {
+                socket.destroy();
+            }
+        })
         flag = 1;
-    })
+        receiveNum -= (commands.length - 3);
+        updateNumberText("receive", -(commands.length - 3));
+    }
     if(flag) {
         updateNumber(pageType, $("." + pageType + "Table").length);
         if(pageType == "draft")
             text = '选中草稿已删除';
         else if(pageType == "out")
             text = '选中邮件已删除';
+        else if(pageType == "receive")
+            text = '选中右键已通知服务器删除'
         Swal.fire({
             title: '成功',
             type: 'success',
@@ -193,6 +223,18 @@ $('#deleteButton').on('click', function() {
             focusConfirm: true, //聚焦到确定按钮
             confirmButtonText: "确定"
         });
+    }
+})
+
+$('#updateButton').on('click', function() {
+    if(pageType == "draft" || pageType == "out") {
+        load(pageType, true);
+    }
+    else if(pageType == "receive") {
+        loginPop3Test();
+        setTimeout(()=>{
+            load(pageType, true);
+        },1000);
     }
 })
 
@@ -205,12 +247,15 @@ function typeSwitch(type, lastType){
     $("#" + type + "Page")[0].style.display = "block";
     if(type == "write")
         fit();
-    else if(type =="draft") {
+    else if(type == "draft") {
         load("draft", false);
     }
-    else if(type =="out") {
+    else if(type == "out") {
         load("out", false);
-    };
+    }
+    else if(type == "receive") {
+        load("receive", false);
+    }
     pageType = type;
 }
 
@@ -397,14 +442,16 @@ function loginPop3Test() {
 
     socket.on('data', buff => {
         const res = buff.toString();
+        console.log(res);
         if (i == 2) {
-            if (res.substr(1, 3) == 'OK')
+            if (res.substr(1, 2) == 'OK')
                 successPannel();
             else
                 errorPannel("登录POP3服务器");
         }
         if (i == 3) {
             numberStr = res.split(' ')[1];
+            receiveNum = Number(numberStr);
             updateNumber("receive", numberStr);
         }
         if (i < commands.length) {
@@ -428,30 +475,40 @@ function init() {
     readInfo();
     load("draft", true);
     load("out", true);
+    updateNumber("receive", 0);
     infoPannel();
 }
 
 function insertTable(type, filename, subject, receiver, maintext) {
-    let date = filename.split('.json')[0].split('+')[0];
-    let parts = date.split('-');
     var table = document.createElement('table');
     table.width = '100%';
     table.filename = filename;
     table.className = type + "Table ripple";
     table.style.cursor = "pointer";
-    table.bgColor='#eaf1ff'
+    table.bgColor='#eaf1ff';
+    if(type == "receive") {
+        yearMonth = subject = receiver = maintext = "";
+        day = filename;
+    }
+    else{
+        let date = filename.split('.json')[0].split('+')[0];
+        let parts = date.split('-');
+        yearMonth = parts[0] + "-" + parts[1];
+        day = parts[2];
+        receiver = "to: " + receiver;
+    }
     table.innerHTML = "<td style='padding-left:30px; padding-bottom:10px;'>\
         <table>\
             <th width='60' style='font-weight:normal; vertical-align:top;'>\
                 <table>\
                     <tr>\
                         <td style='color:#000000; Arial,sans-serif; font-size:12px; line-height:16px; padding-bottom:6px;'>\
-                            <div>" + parts[0] + "-" + parts[1] + "</div>\
+                            <div>" + yearMonth + "</div>\
                         </td>\
                     </tr>\
                     <tr>\
                         <td style='color:#1e52bd; Arial,sans-serif; font-size:40px; line-height:44px; font-weight:bold;'>\
-                            <div>" + parts[2] + "</div>\
+                            <div>" + day + "</div>\
                         </td>\
                     </tr>\
                 </table>\
@@ -463,7 +520,7 @@ function insertTable(type, filename, subject, receiver, maintext) {
                         <td\
                             style='font-size:14px; line-height:18px; padding-bottom:5px; color:#000000;'>\
                             <div style='font-weight:bold;'>" + subject + "</div>\
-                            <div style='font-weight:regular;'>to:" + receiver + "</div>\
+                            <div style='font-weight:regular;'>" + receiver + "</div>\
                         </td>\
                     </tr>\
                     <tr>\
@@ -533,22 +590,32 @@ function load(type, update) {
     $("." + type + "Table").each(function() {
         $(this).remove();
     })
-    path = choosePath(type);
-    files = fs.readdirSync(path);
+    if(type == "receive") {
+        files = new Array(receiveNum);
+        for(var i = 0; i < files.length; i++){
+            files[i] = String(i + 1);
+        }
+    }
+    else{
+        path = choosePath(type);
+        files = fs.readdirSync(path);
+    }
     files.reverse();
     if(files.length)
         $("#" + type + "EmptyTip")[0].style.display = "none";
     else
         $("#" + type + "EmptyTip")[0].style.display = "block";
     files.forEach(function(filename) {
-        content = JSON.parse(fs.readFileSync(path + filename));
-        receiver = content.receiver.split(';')[0]
-        receiver = receiver.length > 2 ? receiver[0] + ";..." : receiver;
-        subject = content.subject
-        subject = subject.length > 30 ? subject.substr(0, 30) + "..." : subject;
-        maintext = content.maintext;
-        line1 = maintext.indexOf('\n') >= 0 ? maintext.substr(0, maintext.indexOf('\n')) : maintext;
-        maintext = line1.substr(0, 30) + "..."
+        if(type == "draft" || type == "out") {
+            content = JSON.parse(fs.readFileSync(path + filename));
+            receiver = content.receiver.split(';')[0]
+            receiver = receiver.length > 2 ? receiver[0] + ";..." : receiver;
+            subject = content.subject
+            subject = subject.length > 30 ? subject.substr(0, 30) + "..." : subject;
+            maintext = content.maintext;
+            line1 = maintext.indexOf('\n') >= 0 ? maintext.substr(0, maintext.indexOf('\n')) : maintext;
+            maintext = line1.substr(0, 30) + "...";
+        }
         insertTable(type, filename, subject, receiver, maintext);
     });
     bindClickForTables(type);

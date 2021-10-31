@@ -73,7 +73,7 @@
                         <span id="saveButtonText">保存</span>
                     </button>
                 </div>
-                <div style="margin-left: 0px; display: none;" class="draftButton outButton">
+                <div style="margin-left: 0px; display: none;" class="receiveButton draftButton outButton">
                     <button type="button" id="chooseButton" class="btn btn-info d-inline-block">
                         <i class="far fa-check-square fa-lg"></i>
                         <span id="chooseButtonText">全选</span>
@@ -85,6 +85,10 @@
                     <button type="button" id="deleteButton" class="btn btn-info d-inline-block">
                         <i class="far fa-trash-alt fa-lg"></i>
                         <span id="deleteButtonText">删除</span>
+                    </button>
+                    <button type="button" id="updateButton" class="btn btn-info d-inline-block">
+                        <i class="far fa-trash-alt fa-lg"></i>
+                        <span id="updateButtonText">更新</span>
                     </button>
                 </div>
             </nav>
@@ -108,21 +112,21 @@
                 <div id="receiveEmptyTip"
                     style="font-size: 40px; color: #888888; position: absolute; left:50%; top:50%; transform: translate(-50%, -50%);">
                     <div style="display:inline">Oops!</div><a class="fas fa-paw" style="margin-left: 10px;"></a>
-                    <div>好像收件箱是空的耶~</div>
+                    <div>好像收件箱是空的诶~</div>
                 </div>
             </div>
             <div id="draftPage" style="display: none;">
                 <div id="draftEmptyTip"
                     style="font-size: 40px; color: #888888; position: absolute; left:50%; top:50%; transform: translate(-50%, -50%);">
                     <div style="display:inline">Oops!</div><a class="fas fa-paw" style="margin-left: 10px;"></a>
-                    <div>好像草稿箱是空的耶~</div>
+                    <div>好像草稿箱是空的诶~</div>
                 </div>
             </div>
             <div id="outPage" style="display: none;">
                 <div id="outEmptyTip"
                     style="font-size: 40px; color: #888888; position: absolute; left:50%; top:50%; transform: translate(-50%, -50%);">
                     <div style="display:inline">Oops!</div><a class="fas fa-paw" style="margin-left: 10px;"></a>
-                    <div>好像还没发出过邮件耶~</div>
+                    <div>好像还没发出过邮件诶~</div>
                 </div>
             </div>
         </div>
