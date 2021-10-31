@@ -43,7 +43,7 @@ function choosePath(type){
         path = draftPath;
     else if(type == "out")
         path = outPath;
-    return path
+    return path;
 }
 
 function fit() {
@@ -229,6 +229,12 @@ $('#deleteButton').on('click', function() {
 $('#updateButton').on('click', function() {
     if(pageType == "draft" || pageType == "out") {
         load(pageType, true);
+        Swal.fire({
+            title: '更新成功',
+            type: 'success',
+            confirmButtonText: "确定",
+            showCancelButton: false,
+        });
     }
     else if(pageType == "receive") {
         loginPop3Test();
@@ -238,13 +244,24 @@ $('#updateButton').on('click', function() {
     }
 })
 
+$("#returnButton").on('click', function() {
+    $("#preview")[0].style.display = "none";
+    $("." + pageType + "Table").each(function() {
+        $(this)[0].style.display = "block";
+    })
+    $(".specialButton")[0].style.display = "none";
+})
+
 function typeSwitch(type, lastType){
+    if($("#preview")[0])
+        $("#preview")[0].style.display = "none";
     $("#" + lastType + "Li")[0].className = "sideLi";
     $("#" + type + "Li")[0].className = "active sideLi";
     $("." + lastType + "Button")[0].style.display = "none";
     $("." + type + "Button")[0].style.display = "block";
     $("#" + lastType + "Page")[0].style.display = "none";
     $("#" + type + "Page")[0].style.display = "block";
+    $(".specialButton")[0].style.display = "none";
     if(type == "write")
         fit();
     else if(type == "draft") {
@@ -301,7 +318,7 @@ function send() {
     commands.push('QUIT\r\n');
 
     socket.on('error', buff => {
-        errorPannel("发送");
+        errorPannel("发送失败");
     })
 
     socket.on('data', buff => {
@@ -309,13 +326,13 @@ function send() {
         if (i >= 6 && i <= 5 + cnt) {
             if (res.substr(0, 3) != '250'){
                 i = commands.length;
-                errorPannel("发送");
+                errorPannel("发送失败");
             }
         }
         if (i == 7 + cnt) {
             if (res.substr(0, 3) != '250'){
                 i = commands.length;
-                errorPannel("发送");
+                errorPannel("发送失败");
             }
             else {
                 Swal.fire({
@@ -361,16 +378,16 @@ function infoPannel() {
                 loginPop3Test();
             }
             else
-                errorPannel("登录");
+                errorPannel("登录失败");
         }
     });
 }
 
-function successPannel() {
+function successPannel(title = "登陆成功", text = "登录信息已保存到客户端") {
     Swal.fire({
-        title: '登录成功',
+        title: title,
         type: 'success',
-        text: '登录信息已保存到客户端',
+        text: text,
         focusConfirm: true, //聚焦到确定按钮
         confirmButtonText: "确定"
     }).then(function (result) {
@@ -378,9 +395,9 @@ function successPannel() {
     });
 }
 
-function errorPannel(type) {
+function errorPannel(title) {
     Swal.fire({
-        title: type + '失败',
+        title: title,
         type: 'error',
         text: '请检查信息是否完整且正确',
         focusConfirm: true, //聚焦到确定按钮
@@ -405,16 +422,16 @@ function loginSmtpTest() {
     ]
 
     socket.on('error', buff => {
-        errorPannel("登录SMTP服务器");
+        errorPannel("登录SMTP服务器失败");
     })
 
     socket.on('data', buff => {
         const res = buff.toString();
         if (i == 4) {
             if (res.substr(0, 3) == '235')
-                successPannel();
+                successPannel("登录SMTP服务器已成功");
             else
-                errorPannel("登录SMTP服务器");
+                errorPannel("登录SMTP服务器失败");
         }
         if (i < commands.length) {
             socket.write(String(commands[i++]));
@@ -437,17 +454,16 @@ function loginPop3Test() {
     ]
 
     socket.on('error', buff => {
-        errorPannel("登录POP3服务器");
+        errorPannel("登录POP3服务器失败");
     })
 
     socket.on('data', buff => {
         const res = buff.toString();
-        console.log(res);
         if (i == 2) {
             if (res.substr(1, 2) == 'OK')
-                successPannel();
+                successPannel("登录POP3服务器成功", "信息已更新");
             else
-                errorPannel("登录POP3服务器");
+                errorPannel("登录POP3服务器失败");
         }
         if (i == 3) {
             numberStr = res.split(' ')[1];
@@ -536,6 +552,20 @@ function insertTable(type, filename, subject, receiver, maintext) {
     $("#" + type + "Page")[0].appendChild(table);
 }
 
+function insertPreview(type, content) {
+    var div =document.createElement('div');
+    div.id = "preview";
+    div.style.display = "none";
+    div.style.top = "-10px";
+    if(type == "receive") {
+        div.innerText = content;
+    }
+    else if(type == "out") {
+        div.innerHTML = "<h3>" + content.subject + "</h3><div>收件人:" + content.receive + "</div><div>正文:\n" + content.maintext + "</div>";
+    }
+    $("#" + pageType + "Page")[0].appendChild(div);
+}
+
 function bindClickForTables(type) {
     $('.' + type + 'Table').on('click', function(e){
         if($(this)[0].classList.contains("chosen")){
@@ -550,26 +580,78 @@ function bindClickForTables(type) {
 }
 
 function bindDblClikForTables(type){
-    $('.' + type + 'Table').on('dblclick', function(e){
-        filename = $(this)[0].filename;
-        edit_state = type;
-        edit_from = filename;
-        path = choosePath(type);
-        content = JSON.parse(fs.readFileSync(path + filename));
-        if(content.receiver){
-            $('#receiver')[0].value = content.receiver;
-            $('#receiver')[0].classList.add("active");
-        }
-        if(content.subject){
-            $('#subject')[0].value = content.subject;
-            $('#subject')[0].classList.add("active");
-        }
-        if(content.subject){
-            $('#maintext')[0].value = content.maintext;
-            $('#maintext')[0].classList.add("active");
-        }
-        typeSwitch("write", type);
-    })
+    if(type == "draft"){
+        $('.' + type + 'Table').on('dblclick', function(e){
+            filename = $(this)[0].filename;
+            edit_state = type;
+            edit_from = filename;
+            path = choosePath(type);
+            content = JSON.parse(fs.readFileSync(path + filename));
+            if(content.receiver){
+                $('#receiver')[0].value = content.receiver;
+                $('#receiver')[0].classList.add("active");
+            }
+            if(content.subject){
+                $('#subject')[0].value = content.subject;
+                $('#subject')[0].classList.add("active");
+            }
+            if(content.subject){
+                $('#maintext')[0].value = content.maintext;
+                $('#maintext')[0].classList.add("active");
+            }
+            typeSwitch("write", type);
+        });
+    }
+    else if(type == "receive" || "out"){ //预览邮件
+        $('.' + type + 'Table').on('dblclick', function(e){
+            filename = $(this)[0].filename;
+            if(type == "receive") {
+                let i = 0;
+                var socket = net.connect(pop3Port, info.pop3Host, function () {
+                    console.log('CONNECTED TO: ' + info.pop3Host + ':' + pop3Port);
+                });
+
+                var commands = [
+                    'USER ' + info.username + '\r\n',
+                    'PASS ' + info.password + '\r\n',
+                    'RETR ' + filename + '\r\n'
+                ]
+
+                content = "";
+                
+                socket.on('error', buff => {
+                    errorPannel("登录POP3服务器失败");
+                })
+
+                socket.on('data', buff => {
+                    const res = buff.toString();
+                    if (i == 2 && res.substr(1, 2) != 'OK') {
+                            errorPannel("登录POP3服务器失败");
+                    }
+                    if (i < commands.length) {
+                        socket.write(String(commands[i++]));
+                    } else {
+                        content += res;
+                        if(res.substr(-1, 1) == ".") {
+                            socket.destroy();
+                        }
+                    }
+                });
+            }
+            else{
+                content = JSON.parse(fs.readFileSync(path + filename));
+            }
+            setTimeout(()=>{
+                $("#preview").remove();
+                insertPreview(type, content);
+                $("." + pageType + "Table").each(function() {
+                    $(this)[0].style.display = "none";
+                })
+                $(".specialButton")[0].style.display = "inline";
+                $("#preview")[0].style.display = "block";
+            }, type == "receive" ? 1000 : 0);
+        });
+    }
 }
 
 function updateNumber(type, number) {
@@ -589,7 +671,7 @@ function updateNumberText(type, off) {
 function load(type, update) {
     $("." + type + "Table").each(function() {
         $(this).remove();
-    })
+    });
     if(type == "receive") {
         files = new Array(receiveNum);
         for(var i = 0; i < files.length; i++){
@@ -619,8 +701,7 @@ function load(type, update) {
         insertTable(type, filename, subject, receiver, maintext);
     });
     bindClickForTables(type);
-    if(type == "draft")
-        bindDblClikForTables(type);
+    bindDblClikForTables(type);
     if(update)
         updateNumber(type, $("." + type + "Table").length);
 }

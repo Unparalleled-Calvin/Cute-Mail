@@ -27,14 +27,14 @@ if (!gotTheLock) {
                 contextIsolation: false,
                 enableRemoteModule: true,
             },
-            width: 800,
+            width: 1000,
             height: 600,
         });
 
         //打开控制台
-        win.webContents.openDevTools({
-            mode: "bottom"
-        });
+        // win.webContents.openDevTools({
+        //     mode: "bottom"
+        // });
 
         win.loadFile('index.html');
         win.on('closed', function () {
