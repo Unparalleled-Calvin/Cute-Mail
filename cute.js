@@ -630,11 +630,13 @@ function bindDblClikForTables(type){
                     }
                     if (i < commands.length) {
                         socket.write(String(commands[i++]));
-                    } else {
+                    } else if (i > commands.length){
                         content += res;
                         if(res.substr(-1, 1) == ".") {
                             socket.destroy();
                         }
+                    } else{
+                        i++;
                     }
                 });
             }
