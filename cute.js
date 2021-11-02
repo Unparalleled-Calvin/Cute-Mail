@@ -16,10 +16,13 @@ const rootPath = pathName.substr(1, pathName.search(/index.html/g) - 1);
 const draftPath = rootPath + 'drafts/';
 const outPath = rootPath + 'out/';
 const smtpPort = 25;
+const smtpPortSafe = 465;
 const pop3Port = 110;
+const pop3PortSafe = 995;
 
 var fs = require('fs')
 var net = require('net');
+var tls = require('tls');
 
 let edit_state = "new";
 let edit_from = "";
@@ -28,7 +31,7 @@ let receiveNum = 0;
 var pageType = "write";
 
 var info = {
-    stmpHost: '',
+    smtpHost: '',
     pop3Host: '',
     username: '',
     password: ''
@@ -124,7 +127,24 @@ $("#sendButton").on('click', function () {
         });
     }
     else {
-        send();
+        send(false);
+    }
+});
+
+$("#safeSendButton").on('click', function () {
+    if (checkEmpty()) {
+        Swal.fire({
+            title: '发送失败',
+            type: 'error',
+            text: '请将相关信息填写完整',
+            confirmButtonText: "确定",
+            showCancelButton: false,
+        }).then(function (result) {
+
+        });
+    }
+    else {
+        send(true);
     }
 });
 
@@ -286,14 +306,21 @@ $('.sideLi').on('click', function(e){
     }
 })
 
-function send() {
+function send(useTLS) {
     let i = 0;
-    var socket = net.connect(smtpPort, info.stmpHost, function () {
-        console.log('CONNECTED TO: ' + info.stmpHost + ':' + smtpPort);
-    });
+    if(useTLS) {
+        var socket = tls.connect(smtpPortSafe, info.smtpHost, function () {
+            console.log('CONNECTED TO: ' + info.smtpHost + ':' + smtpPortSafe);
+        });
+    }
+    else {
+        var socket = net.connect(smtpPort, info.smtpHost, function () {
+            console.log('CONNECTED TO: ' + info.smtpHost + ':' + smtpPort);
+        });
+    }
 
     var commands = [
-        'HELO ' + info.stmpHost + '\r\n',
+        'HELO ' + info.smtpHost + '\r\n',
         'AUTH LOGIN\r\n',
         window.btoa(info.username) + '\r\n',
         window.btoa(info.password) + '\r\n',
@@ -357,7 +384,7 @@ function send() {
 }
 
 function infoPannel() {
-    var html = "<div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>SMTP服务器：</p><input placeholder='SMTP' id='stmpHost_input' value=" + info.stmpHost + "></input></div>\
+    var html = "<div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>SMTP服务器：</p><input placeholder='SMTP' id='smtpHost_input' value=" + info.smtpHost + "></input></div>\
     <div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>POP3服务器：</p><input placeholder='SMTP' id='pop3Host_input' value=" + info.pop3Host + "></input></div>\
     <div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>&nbsp;&nbsp;&nbsp;&nbsp;用户名：</p><input placeholder='用户名' id='username_input' value=" + info.username + "></input></div>\
     <div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>&nbsp;&nbsp;&nbsp;&nbsp;授权码：</p><input placeholder='授权码' id='password_input'value=" + info.password + "></input></div>";
@@ -369,11 +396,11 @@ function infoPannel() {
         confirmButtonText: "确定",
     }).then(function (result) {
         if (result['value']) {
-            info.stmpHost = $("#stmpHost_input")[0].value;
+            info.smtpHost = $("#smtpHost_input")[0].value;
             info.pop3Host = $("#pop3Host_input")[0].value;
             info.username = $("#username_input")[0].value;
             info.password = $("#password_input")[0].value;
-            if (info.stmpHost && info.pop3Host && info.username && info.password) {
+            if (info.smtpHost && info.pop3Host && info.username && info.password) {
                 loginSmtpTest();
                 loginPop3Test();
             }
@@ -410,12 +437,12 @@ function errorPannel(title) {
 
 function loginSmtpTest() {
     let i = 0;
-    var socket = net.connect(smtpPort, info.stmpHost, function () {
-        console.log('CONNECTED TO: ' + info.stmpHost + ':' + smtpPort);
+    var socket = net.connect(smtpPort, info.smtpHost, function () {
+        console.log('CONNECTED TO: ' + info.smtpHost + ':' + smtpPort);
     });
 
     var commands = [
-        'HELO ' + info.stmpHost + '\r\n',
+        'HELO ' + info.smtpHost + '\r\n',
         'AUTH LOGIN\r\n',
         window.btoa(info.username) + '\r\n',
         window.btoa(info.password) + '\r\n'
@@ -561,7 +588,8 @@ function insertPreview(type, content) {
         div.innerText = content;
     }
     else if(type == "out") {
-        div.innerHTML = "<h3>" + content.subject + "</h3><div>收件人:" + content.receive + "</div><div>正文:\n" + content.maintext + "</div>";
+        content.receiver += content.receiver.substr(-1,1)==";" ? "" : ";"
+        div.innerHTML = "<h3>" + content.subject + "</h3><div>收件人:" + content.receiver + "</div><div>正文:\n" + content.maintext + "</div>";
     }
     $("#" + pageType + "Page")[0].appendChild(div);
 }
@@ -692,9 +720,9 @@ function load(type, update) {
     files.forEach(function(filename) {
         if(type == "draft" || type == "out") {
             content = JSON.parse(fs.readFileSync(path + filename));
-            receiver = content.receiver.split(';')[0]
+            receiver = content.receiver.split(';')
             receiver = receiver.length > 2 ? receiver[0] + ";..." : receiver;
-            subject = content.subject
+            subject = content.subject;
             subject = subject.length > 30 ? subject.substr(0, 30) + "..." : subject;
             maintext = content.maintext;
             line1 = maintext.indexOf('\n') >= 0 ? maintext.substr(0, maintext.indexOf('\n')) : maintext;
