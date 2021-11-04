@@ -13,8 +13,8 @@ $(document).ready(function () {
 
 const pathName = document.location.pathname;
 const rootPath = pathName.substr(1, pathName.search(/index.html/g) - 1);
-const draftPath = rootPath + 'drafts/';
-const outPath = rootPath + 'out/';
+var draftPath = rootPath + 'drafts/';
+var outPath = rootPath + 'out/';
 const smtpPort = 25;
 const smtpPortSafe = 465;
 const pop3Port = 110;
@@ -419,6 +419,16 @@ function successPannel(title = "登陆成功", text = "登录信息已保存到�
         confirmButtonText: "确定"
     }).then(function (result) {
         saveInfo();
+        draftPath = rootPath + 'drafts/' + info.username + "/";
+        outPath = rootPath + 'out/' + info.username + "/";
+        if(!fs.existsSync(draftPath)){
+            fs.mkdirSync(draftPath);
+        }
+        if(!fs.existsSync(outPath)){
+            fs.mkdirSync(outPath);
+        }
+        load("draft", true);
+        load("out", true);
     });
 }
 
@@ -516,8 +526,14 @@ function saveInfo() {
 function init() {
     fit();
     readInfo();
-    load("draft", true);
-    load("out", true);
+    if(!fs.existsSync(draftPath)){
+        fs.mkdirSync(draftPath);
+    }
+    if(!fs.existsSync(outPath)){
+        fs.mkdirSync(outPath);
+    }
+    updateNumber("draft", 0);
+    updateNumber("out", 0);
     updateNumber("receive", 0);
     infoPannel();
 }
