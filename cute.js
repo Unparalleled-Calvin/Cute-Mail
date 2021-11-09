@@ -50,7 +50,7 @@ function choosePath(type){
 }
 
 function fit() {
-    $('#maintext')[0].rows = Math.round((window.innerHeight - $('#maintext')[0].getBoundingClientRect().top) / 25) - 3
+    $('#maintext')[0].rows = Math.round((window.innerHeight - $('#maintext')[0].getBoundingClientRect().top) / 25) - 5
 }
 
 function checkEmpty() {
@@ -58,7 +58,7 @@ function checkEmpty() {
 }
 
 function clear() {
-    $('#receiver')[0].value = $('#subject')[0].value = $('#maintext')[0].value = ''
+    $('#appendix')[0].value = $('#receiver')[0].value = $('#subject')[0].value = $('#maintext')[0].value = ''
     $('#receiver')[0].classList.remove('active');
     $('#subject')[0].classList.remove('active');
     $('#maintext')[0].classList.remove('active');
@@ -304,7 +304,37 @@ $('.sideLi').on('click', function(e){
     if(type != lastType){
         typeSwitch(type, lastType);
     }
-})
+});
+
+function genMimeData() {
+    boundary = "cute_boundary";
+
+    DATA = "";
+    DATA += "Mime-Version: 1.0\r\n";
+    DATA += "Content-Type: multipart/mixed;boundary=\"" + boundary + "\"\r\n\r\n";
+    DATA += "Content-Transfer-Encoding:7bit\r\n\r\n";
+
+    // 邮件正文
+    DATA += "--" + boundary + "\r\n";
+    DATA += "Content-Type: text/plain;charset=utf-8\r\n";
+    DATA += "Content-Transfer-Encoding:7bit\r\n\r\n"
+    DATA += $("#maintext")[0].value + "\r\n";
+
+    // 附件内容
+    files = $('#appendix').prop('files');
+    files.forEach(function(file) {
+        DATA += "--" + boundary + "\r\n";
+        DATA += "Content-Transfer-Encoding: utf-8\r\n";
+        DATA += "Content-Type:application/octet-stream;\r\n";
+        DATA += "Content-Disposition: attachment; filename=\"" + file.name + "\"\r\n\r\n";
+        DATA += fs.readFileSync(file.path) + "\r\n";
+    });
+
+    // 邮件结束
+    DATA += "--" + boundary + "--\r\n";
+    DATA += "\r\n.\r\n";
+    return DATA;
+}
 
 function send(useTLS) {
     let i = 0;
@@ -338,7 +368,7 @@ function send(useTLS) {
     })
     DATA += "\r\n";
     DATA += "SUBJECT: " + $("#subject")[0].value + "\r\n";
-    DATA += $("#maintext")[0].value + "\r\n.\r\n";
+    DATA += genMimeData();
 
     commands.push('DATA\r\n');
     commands.push(DATA)
@@ -670,12 +700,19 @@ function bindDblClikForTables(type){
                 socket.on('data', buff => {
                     const res = buff.toString();
                     if (i == 2 && res.substr(1, 2) != 'OK') {
-                            errorPannel("登录POP3服务器失败");
+                        errorPannel("登录POP3服务器失败");
                     }
                     if (i < commands.length) {
                         socket.write(String(commands[i++]));
                     } else if (i > commands.length){
                         content += res;
+                        $("#preview").remove();
+                        insertPreview(type, content);
+                        $("." + pageType + "Table").each(function() {
+                            $(this)[0].style.display = "none";
+                        })
+                        $(".specialButton")[0].style.display = "inline";
+                        $("#preview")[0].style.display = "block";
                         if(res.substr(-1, 1) == ".") {
                             socket.destroy();
                         }
@@ -686,8 +723,6 @@ function bindDblClikForTables(type){
             }
             else{
                 content = JSON.parse(fs.readFileSync(path + filename));
-            }
-            setTimeout(()=>{
                 $("#preview").remove();
                 insertPreview(type, content);
                 $("." + pageType + "Table").each(function() {
@@ -695,7 +730,7 @@ function bindDblClikForTables(type){
                 })
                 $(".specialButton")[0].style.display = "inline";
                 $("#preview")[0].style.display = "block";
-            }, type == "receive" ? 1000 : 0);
+            }
         });
     }
 }

@@ -27,8 +27,8 @@ if (!gotTheLock) {
                 contextIsolation: false,
                 enableRemoteModule: true,
             },
-            width: 1000,
-            height: 600,
+            width: 1050,
+            height: 650,
         });
 
         //打开控制台
