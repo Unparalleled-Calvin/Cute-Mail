@@ -15,6 +15,7 @@ const pathName = document.location.pathname;
 const rootPath = pathName.substr(1, pathName.search(/index.html/g) - 1);
 var draftPath = rootPath + 'drafts/';
 var outPath = rootPath + 'out/';
+var friendPath = rootPath + 'friends/';
 const smtpPort = 25;
 const smtpPortSafe = 465;
 const pop3Port = 110;
@@ -46,6 +47,8 @@ function choosePath(type){
         path = draftPath;
     else if(type == "out")
         path = outPath;
+    else if(type == "friend")
+        path = friendPath;
     return path;
 }
 
@@ -112,6 +115,20 @@ function saveOut() {
     };
     filename = outPath + date + '.json';
     fs.writeFileSync(filename, JSON.stringify(content));
+}
+
+function saveFriends() {
+    filename = friendPath + "friends.json"
+    content = ""
+    $(".friendTable").each(function() {
+        friend_info = {
+            "name" : $(this)[0].name,
+            "email" : $(this)[0].receiver,
+            "description" : $(this)[0].description
+        }
+        content += JSON.stringify(friend_info) + "\n"
+    })
+    fs.writeFileSync(filename, content.substr(0, content.length-1))
 }
 
 $("#sendButton").on('click', function () {
@@ -203,7 +220,15 @@ $('#deleteButton').on('click', function() {
             flag = 1;
         });
     }
-    else if(type == "receive"){
+    else if(pageType == "friend") {
+        $("." + pageType + "Table.chosen").each(function(){
+            $(this).remove();
+        });
+        saveFriends();
+        load("friend", true);
+        flag = 1
+    }
+    else if(pageType == "receive") {
         let i = 0;
         var socket = net.connect(pop3Port, info.pop3Host, function () {
             console.log('CONNECTED TO: ' + info.pop3Host + ':' + pop3Port);
@@ -234,6 +259,8 @@ $('#deleteButton').on('click', function() {
             text = '选中草稿已删除';
         else if(pageType == "out")
             text = '选中邮件已删除';
+        else if(pageType == "friend")
+            text = '选中好友已删除';
         else if(pageType == "receive")
             text = '选中右键已通知服务器删除'
         Swal.fire({
@@ -272,26 +299,71 @@ $("#returnButton").on('click', function() {
     $(".specialButton")[0].style.display = "none";
 })
 
+$("#newButton").on('click', function(){
+    var html = "<div style='height:60px'><p style='display:inline-block;width:100px;text-align:justify;'>姓名：</p><input placeholder='姓名' id='name_input'></input></div>\
+    <div style='height:60px'><p style='display:inline-block;width:100px;text-align:justify;'>邮箱：</p><input placeholder='邮箱' id='email_input'></input></div>\
+    <div style='height:60px'><p style='display:inline-block;width:100px;text-align:justify;'>备注：</p><input placeholder='备注' id='description_input'></input></div>";
+    Swal.fire({
+        title: '新增好友',
+        type: 'info',
+        html: html, // HTML
+        focusConfirm: true, //聚焦到确定按钮
+        confirmButtonText: "确定",
+    }).then(function (result) {
+        if (result['value']) {
+            insertTable("friend", $(".friendTable").length, $("#name_input")[0].value, $("#email_input")[0].value, $("#description_input")[0].value)
+            bindClickForTables(type);
+            bindDblClikForTables(type);
+            saveFriends();
+            $("#friendEmptyTip")[0].style.display = "none";
+            Swal.fire({
+                title: '添加成功',
+                type: 'success',
+                Msg: '和朋友多多联系吧！',
+                focusConfirm: true,
+                confirmButtonText: "确定",
+            });
+        }
+    });
+})
+
+$("#useButton").on('click', function(){
+    receivers = ""
+    $(".friendTable.chosen").each(function(){
+        receiver = $(this)[0].receiver
+        receivers += receiver
+        if(receiver[receiver.length-1] != ";")
+            receivers += ";"
+    })
+    $('#receiver')[0].value = receivers;
+    $('#receiver')[0].classList.add("active");
+    $('#subject')[0].value = "";
+    $('#maintext')[0].value = "";
+    typeSwitch("write", type);
+})
+
 function typeSwitch(type, lastType){
     if($("#preview")[0])
         $("#preview")[0].style.display = "none";
     $("#" + lastType + "Li")[0].className = "sideLi";
     $("#" + type + "Li")[0].className = "active sideLi";
-    $("." + lastType + "Button")[0].style.display = "none";
-    $("." + type + "Button")[0].style.display = "block";
-    $("#" + lastType + "Page")[0].style.display = "none";
-    $("#" + type + "Page")[0].style.display = "block";
+    $("." + lastType + "Button").each(function() {
+        $(this)[0].style.display = "none";
+    })
+    $("." + type + "Button").each(function() {
+        $(this)[0].style.display = "block";
+    })
+    $("#" + lastType + "Page").each(function() {
+        $(this)[0].style.display = "none";
+    })
+    $("#" + type + "Page").each(function() {
+        $(this)[0].style.display = "block";
+    })
     $(".specialButton")[0].style.display = "none";
     if(type == "write")
         fit();
-    else if(type == "draft") {
-        load("draft", false);
-    }
-    else if(type == "out") {
-        load("out", false);
-    }
-    else if(type == "receive") {
-        load("receive", false);
+    else {
+        load(type, false)
     }
     pageType = type;
 }
@@ -415,7 +487,7 @@ function send(useTLS) {
 
 function infoPannel() {
     var html = "<div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>SMTP服务器：</p><input placeholder='SMTP' id='smtpHost_input' value=" + info.smtpHost + "></input></div>\
-    <div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>POP3服务器：</p><input placeholder='SMTP' id='pop3Host_input' value=" + info.pop3Host + "></input></div>\
+    <div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>POP3服务器：</p><input placeholder='POP3' id='pop3Host_input' value=" + info.pop3Host + "></input></div>\
     <div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>&nbsp;&nbsp;&nbsp;&nbsp;用户名：</p><input placeholder='用户名' id='username_input' value=" + info.username + "></input></div>\
     <div style='height:60px'><p style='display:inline-block;width:150px;text-align:justify;'>&nbsp;&nbsp;&nbsp;&nbsp;授权码：</p><input placeholder='授权码' id='password_input'value=" + info.password + "></input></div>";
     Swal.fire({
@@ -451,14 +523,19 @@ function successPannel(title = "登陆成功", text = "登录信息已保存到�
         saveInfo();
         draftPath = rootPath + 'drafts/' + info.username + "/";
         outPath = rootPath + 'out/' + info.username + "/";
+        friendPath = rootPath + 'friends/' + info.username + "/";
         if(!fs.existsSync(draftPath)){
             fs.mkdirSync(draftPath);
         }
         if(!fs.existsSync(outPath)){
             fs.mkdirSync(outPath);
         }
+        if(!fs.existsSync(friendPath)){
+            fs.mkdirSync(friendPath);
+        }
         load("draft", true);
         load("out", true);
+        load("friend", true)
     });
 }
 
@@ -565,6 +642,7 @@ function init() {
     updateNumber("draft", 0);
     updateNumber("out", 0);
     updateNumber("receive", 0);
+    updateNumber("friend", 0);
     infoPannel();
 }
 
@@ -578,6 +656,13 @@ function insertTable(type, filename, subject, receiver, maintext) {
     if(type == "receive") {
         yearMonth = subject = receiver = maintext = "";
         day = filename;
+    }
+    else if(type == "friend") {
+        yearMonth = ""
+        day = filename;
+        table.name = subject;
+        table.receiver = receiver;
+        table.description = maintext;
     }
     else{
         let date = filename.split('.json')[0].split('+')[0];
@@ -704,7 +789,7 @@ function bindDblClikForTables(type){
                     }
                     if (i < commands.length) {
                         socket.write(String(commands[i++]));
-                    } else if (i > commands.length){
+                    } else if (i >= commands.length){
                         content += res;
                         $("#preview").remove();
                         insertPreview(type, content);
@@ -733,6 +818,12 @@ function bindDblClikForTables(type){
             }
         });
     }
+    else if(type == "friend"){ //使用好友地址发送邮件
+        $('#receiver')[0].value = $(this)[0].receiver;
+        $('#subject')[0].value = "";
+        $('#maintext')[0].value = "";
+        typeSwitch("write", type);
+    }
 }
 
 function updateNumber(type, number) {
@@ -753,14 +844,23 @@ function load(type, update) {
     $("." + type + "Table").each(function() {
         $(this).remove();
     });
+    path = choosePath(type);
+    files = []
     if(type == "receive") {
         files = new Array(receiveNum);
         for(var i = 0; i < files.length; i++){
             files[i] = String(i + 1);
         }
     }
+    else if(type == "friend"){
+        friends = fs.readFileSync(path + "friends.json");
+        files = friends.toString().split("\r\n");
+        files.sort()
+        while(files[0] == "")
+            files.splice(0,1)
+
+    }
     else{
-        path = choosePath(type);
         files = fs.readdirSync(path);
     }
     files.reverse();
@@ -768,7 +868,7 @@ function load(type, update) {
         $("#" + type + "EmptyTip")[0].style.display = "none";
     else
         $("#" + type + "EmptyTip")[0].style.display = "block";
-    files.forEach(function(filename) {
+    files.forEach(function(filename, index) {
         if(type == "draft" || type == "out") {
             content = JSON.parse(fs.readFileSync(path + filename));
             receiver = content.receiver.split(';')
@@ -778,6 +878,13 @@ function load(type, update) {
             maintext = content.maintext;
             line1 = maintext.indexOf('\n') >= 0 ? maintext.substr(0, maintext.indexOf('\n')) : maintext;
             maintext = line1.substr(0, 30) + "...";
+        }
+        else if(type == "friend") {
+            friend_info = JSON.parse(filename);
+            subject = friend_info.name;
+            receiver = friend_info.email;
+            maintext = friend_info.description;
+            filename = index;
         }
         insertTable(type, filename, subject, receiver, maintext);
     });
