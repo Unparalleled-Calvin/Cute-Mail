@@ -1,4 +1,5 @@
-/drafts/*
-/out/*
-/friends/*
+drafts
+out
+friends
 node_modules
+info.json

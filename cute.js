@@ -547,7 +547,7 @@ function errorPannel(title) {
         focusConfirm: true, //聚焦到确定按钮
         confirmButtonText: "确定"
     }).then(function (result) {
-        if(type.includes("登录"))
+        if(title.includes("登录"))
             infoPannel();
     });
 }
@@ -623,7 +623,11 @@ function loginPop3Test() {
 }
 
 function readInfo() {
-    info = JSON.parse(fs.readFileSync(rootPath + 'info.json'));
+    try{
+        info = JSON.parse(fs.readFileSync(rootPath + 'info.json'));
+    }
+    catch{
+    }
 }
 
 function saveInfo() {
