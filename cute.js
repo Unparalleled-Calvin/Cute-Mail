@@ -396,10 +396,10 @@ function genMimeData() {
     files = $('#appendix').prop('files');
     files.forEach(function(file) {
         DATA += "--" + boundary + "\r\n";
-        DATA += "Content-Transfer-Encoding: utf-8\r\n";
-        DATA += "Content-Type:application/octet-stream;\r\n";
+        DATA += "Content-Transfer-Encoding: base64\r\n";
+        DATA += "Content-Type:application/octet-stream;charset=utf-8\r\n";
         DATA += "Content-Disposition: attachment; filename=\"" + file.name + "\"\r\n\r\n";
-        DATA += fs.readFileSync(file.path) + "\r\n";
+        DATA += fs.readFileSync(file.path, { encoding: 'BASE64' }) + "\r\n";
     });
 
     // 邮件结束
@@ -765,7 +765,7 @@ function bindDblClikForTables(type){
             typeSwitch("write", type);
         });
     }
-    else if(type == "receive" || "out"){ //预览邮件
+    else if(type == "receive" || type == "out"){ //预览邮件
         $('.' + type + 'Table').on('dblclick', function(e){
             filename = $(this)[0].filename;
             if(type == "receive") {
@@ -823,10 +823,13 @@ function bindDblClikForTables(type){
         });
     }
     else if(type == "friend"){ //使用好友地址发送邮件
-        $('#receiver')[0].value = $(this)[0].receiver;
-        $('#subject')[0].value = "";
-        $('#maintext')[0].value = "";
-        typeSwitch("write", type);
+        $('.' + type + 'Table').on('dblclick', function(e){
+            $('#receiver')[0].value = $(this)[0].receiver;
+            $('#receiver')[0].classList.add('active');
+            $('#subject')[0].value = "";
+            $('#maintext')[0].value = "";
+            typeSwitch("write", type);
+        });
     }
 }
 
@@ -858,11 +861,10 @@ function load(type, update) {
     }
     else if(type == "friend"){
         friends = fs.readFileSync(path + "friends.json");
-        files = friends.toString().split("\r\n");
+        files = friends.toString().split("\n");
         files.sort()
         while(files[0] == "")
             files.splice(0,1)
-
     }
     else{
         files = fs.readdirSync(path);
